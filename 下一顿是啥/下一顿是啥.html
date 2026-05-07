@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>下一顿是啥</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui, -apple-system, sans-serif;}
+  body{background:#fff9f0;padding:20px;}
+  .container{max-width:1000px;margin:0 auto;}
+  header{text-align:center;margin-bottom:30px;}
+  h1{color:#ff6b6b;margin-bottom:10px;font-size:24px;}
+  .tagline{color:#666;font-size:14px;}
+  .main{display:grid;grid-template-columns:1fr;gap:20px;}
+  @media (min-width:768px) {.main{grid-template-columns:1fr 1fr;}}
+  .panel{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 10px rgba(0,0,0,0.05);}
+  .panel h2{color:#ff6b6b;margin-bottom:15px;font-size:18px;display:flex;align-items:center;gap:6px;}
+  #result{height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed #ffccbc;border-radius:10px;margin-bottom:15px;}
+  #result.food{border-style:solid;background:#fff5f3;}
+  #result-icon{font-size:36px;color:#ff9a8b;margin-bottom:10px;}
+  #result-food{font-size:24px;font-weight:bold;color:#ff6b6b;text-align:center;padding:0 10px;}
+  .btn{padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-weight:bold;display:inline-flex;align-items:center;gap:6px;font-size:16px;}
+  .btn-primary{background:#ff6b6b;color:white;}
+  .btn-outline{background:transparent;border:2px solid #ff6b6b;color:#ff6b6b;}
+  .btn-meituan{background:#ffc300;color:#333;width:100%;}
+  .btn-eleme{background:#0085FF;color:white;width:100%;}
+  .btn-copy{background:#6c757d;color:white;width:100%;margin-top:6px;}
+  .action{display:flex;gap:10px;justify-content:center;margin-bottom:15px;flex-wrap:wrap;}
+  .jump{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+  .food-list{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:15px;max-height:250px;overflow-y:auto;}
+  @media (min-width:576px) {.food-list{grid-template-columns:repeat(3,1fr);}}
+  .food-item{background:#f8f9fa;padding:8px;border-radius:6px;text-align:center;cursor:pointer;font-size:14px;}
+  .food-item.selected{background:#ffefed;color:#ff6b6b;}
+  .custom{display:flex;gap:8px;margin-bottom:15px;}
+  .custom input{flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;}
+  .history{margin-top:20px;}
+  .history h3{font-size:16px;color:#ff6b6b;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+  .history-list{display:flex;flex-wrap:wrap;gap:6px;}
+  .history-item{background:#f8f9fa;padding:4px 10px;border-radius:12px;font-size:12px;}
+  .spinning{animation:spin 0.5s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .tip{font-size:12px;color:#999;text-align:center;margin-top:5px;}
+  .mt-tip{font-size:12px;color:#ff6b6b;text-align:center;margin-top:5px;}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1><i class="fas fa-utensils"></i> 下一顿是啥</h1>
+    <p class="tagline">唯美食不可辜负，爱你老己</p>
+  </header>
+
+  <div class="main">
+    <div class="panel">
+      <h2><i class="fas fa-random"></i> 随机选择</h2>
+      <div id="result">
+        <div id="result-icon"><i class="fas fa-question-circle"></i></div>
+        <div id="result-food">请点击随机挑选</div>
+      </div>
+      <div class="action">
+        <button id="random-btn" class="btn btn-primary"><i class="fas fa-dice"></i> 随机挑选</button>
+        <button id="reset-btn" class="btn btn-outline"><i class="fas fa-redo"></i> 重置</button>
+      </div>
+      <div class="jump">
+        <button id="meituan-btn" class="btn btn-meituan"><i class="fas fa-motorcycle"></i> 打开美团APP</button>
+        <button id="copy-btn" class="btn btn-copy"><i class="fas fa-copy"></i> 复制关键词（美团粘贴用）</button>
+        <button id="eleme-btn" class="btn btn-eleme"><i class="fas fa-bolt"></i> 打开饿了么APP</button>
+        <p class="mt-tip">美团APP不支持自动填词，复制后在美团搜索框粘贴即可</p>
+        <p class="tip" id="app-tip">Design by goodmorning</p>
+      </div>
+      <div class="history">
+        <h3><i class="fas fa-history"></i> 最近记录</h3>
+        <div class="history-list" id="history-list"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><i class="fas fa-list-ul"></i> 可选食物</h2>
+      <div class="food-list" id="food-list"></div>
+      <div class="custom">
+        <input id="custom-input" placeholder="添加自定义食物">
+        <button id="add-btn" class="btn btn-outline"><i class="fas fa-plus"></i> 添加</button>
+      </div>
+      <div class="action">
+        <button id="select-all" class="btn btn-outline">全选</button>
+        <button id="clear-all" class="btn btn-outline">清空选择</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 食物列表
+  const foods = [
+    "湘菜现炒盖码饭","中式家常小碗菜","经典小炒木桶饭","川式快餐","粤式蒸品","江南快餐","韩式石锅拌饭","网红盖饭","腊味煲仔饭","滑蛋煲仔饭",
+    "烧鸭叉烧饭","隆江猪脚饭","潮汕卤鹅饭","咸骨粥肠粉","叉烧滑蛋饭","粿条汤","深井烧鹅饭","牛肉丸汤粉",
+    "牛蛙湘菜","剁椒鱼头","麻辣香锅","重庆小面","红油冒菜","小炒黄牛肉","辣子鸡盖饭","擂辣椒皮蛋饭",
+    "低脂三明治","三文鱼拌饭","鸡胸沙拉","全麦三明治","鸡胸轻食碗","果蔬沙拉","藜麦沙拉",
+    "广式鸡煲","椰子鸡汤锅","单人小火锅","港式鸡煲","菌汤鸡汤锅","牛杂汤锅","部队火锅",
+    "双皮奶","广式糖水","芒果甜品","芋圆仙草","芋泥甜品","老糖水","毛巾卷","雪媚娘",
+    "鲜虾肠粉","烧麦套餐","豆浆油条","小笼包馄饨","包子烧麦","杂粮粥","手抓饼",
+    "兰州牛肉面","油泼面","担担面","湖南米粉","豌杂面","螺蛳粉","南昌拌粉","过桥米线",
+    "披萨意面","汉堡炸鸡","咖喱猪排饭","石锅拌饭","冬阴功汤粉","鸡肉河粉","鸡肉卷",
+    "烤羊腿","中式烤串","烤腰子","小龙虾","烤冷面","锡纸花甲","生蚝扇贝","烤苕皮",
+    "骨汤麻辣烫","麻辣拌","关东煮","藤椒麻辣烫","番茄麻辣烫","日式关东煮","麻辣关东煮",
+    "寿司拼盘","三文鱼寿司","豚骨拉面","叉烧饭","玉子烧寿司","乌冬面","手握寿司"
+  ];
+
+  let selected = [...foods];
+  let history = [];
+  const $ = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
+
+  // 渲染食物列表
+  function renderFoodList() {
+    const list = $("#food-list");
+    list.innerHTML = "";
+    foods.forEach(f => {
+      const div = document.createElement("div");
+      div.className = "food-item" + (selected.includes(f) ? " selected" : "");
+      div.textContent = f;
+      div.onclick = () => {
+        selected = selected.includes(f) ? selected.filter(x => x !== f) : [...selected, f];
+        renderFoodList();
+      };
+      list.appendChild(div);
+    });
+  }
+
+  // 随机挑选核心
+  $("#random-btn").onclick = () => {
+    if (selected.length === 0) return alert("请至少选择一种食物！");
+    const icon = $("#result-icon i");
+    icon.classList.add("spinning");
+    $("#random-btn").disabled = true;
+
+    let count = 0;
+    const loop = setInterval(() => {
+      const r = selected[Math.floor(Math.random() * selected.length)];
+      $("#result-food").textContent = r;
+      if (++count > 15) {
+        clearInterval(loop);
+        const final = selected[Math.floor(Math.random() * selected.length)];
+        $("#result-food").textContent = final;
+        icon.classList.remove("spinning");
+        $("#result").classList.add("food");
+        $("#random-btn").disabled = false;
+        addHistory(final);
+      }
+    }, 80);
+  };
+
+  // 重置
+  $("#reset-btn").onclick = () => {
+    $("#result-food").textContent = "请点击随机挑选";
+    $("#result").classList.remove("food");
+  };
+
+  // 全选/清空
+  $("#select-all").onclick = () => { selected = [...foods]; renderFoodList(); };
+  $("#clear-all").onclick = () => { selected = []; renderFoodList(); };
+
+  // 添加自定义食物
+  $("#add-btn").onclick = () => {
+    const val = $("#custom-input").value.trim();
+    if (!val) return;
+    if (foods.includes(val)) return alert("该食物已存在！");
+    foods.push(val);
+    selected.push(val);
+    $("#custom-input").value = "";
+    renderFoodList();
+  };
+
+  // 历史记录
+  function addHistory(f) {
+    history = [f, ...history].slice(0, 5);
+    $("#history-list").innerHTML = history.map(h => `<div class="history-item">${h}</div>`).join('');
+  }
+
+  // 复制关键词（美团专用）
+  $("#copy-btn").onclick = () => {
+    const foodName = $("#result-food").textContent;
+    if (foodName === "请点击随机挑选") {
+      alert("请先随机挑选食物后再复制！");
+      return;
+    }
+    navigator.clipboard.writeText(foodName).then(() => {
+      alert("已复制：" + foodName + "\n打开美团后，长按搜索框粘贴即可");
+    }).catch(() => {
+      alert("复制失败，请手动选中文字复制");
+    });
+  };
+
+  // 【美团最优唤起】只负责打开APP，不承诺填词
+  $("#meituan-btn").onclick = () => {
+    const foodName = $("#result-food").textContent;
+    if (foodName === "请点击随机挑选") {
+      alert("请先随机挑选食物后，再打开外卖APP！");
+      return;
+    }
+    const kw = encodeURIComponent(foodName);
+    const appScheme = `meituanwaimai://waimai.meituan.com/search?keyword=${kw}`;
+    const webUrl = `https://waimai.meituan.com/wap/merchant/search?keyword=${kw}`;
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'display:none;width:0;height:0;border:0;';
+      iframe.src = appScheme;
+      document.body.appendChild(iframe);
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+        if (!document.hidden) window.open(webUrl, '_blank');
+      }, 1500);
+    } else {
+      window.open(webUrl, '_blank');
+    }
+  };
+
+  // 饿了么正常唤起+填词
+  $("#eleme-btn").onclick = () => {
+    const foodName = $("#result-food").textContent;
+    if (foodName === "请点击随机挑选") {
+      alert("请先随机挑选食物后，再打开外卖APP！");
+      return;
+    }
+    const kw = encodeURIComponent(foodName);
+    const appScheme = `eleme://search?keyword=${kw}`;
+    const webUrl = `https://www.ele.me/search?q=${kw}`;
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'display:none;width:0;height:0;border:0;';
+      iframe.src = appScheme;
+      document.body.appendChild(iframe);
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+        if (!document.hidden) window.open(webUrl, '_blank');
+      }, 1500);
+    } else {
+      window.open(webUrl, '_blank');
+    }
+  };
+
+  // 初始化
+  renderFoodList();
+</script>
+</body>
+</html>
